@@ -5,7 +5,8 @@ import { pino } from "pino";
 
 import { openAPIRouter } from "@/api-docs/openAPIRouter";
 import { healthCheckRouter } from "@/api/healthCheck/healthCheckRouter";
-import { userRouter } from "@/api/user/userRouter";
+import { subscriptionRouter } from "@/api/subscription/router"; // Import subscription router
+// import { userRouter } from "@/api/user/userRouter"; // Removed unused import
 import errorHandler from "@/common/middleware/errorHandler";
 import rateLimiter from "@/common/middleware/rateLimiter";
 import requestLogger from "@/common/middleware/requestLogger";
@@ -29,7 +30,8 @@ app.use(requestLogger);
 
 // Routes
 app.use("/health-check", healthCheckRouter);
-app.use("/users", userRouter);
+// app.use("/users", userRouter); // Removed unused route
+app.use("/subscriptions", subscriptionRouter); // Use subscription router
 
 // Swagger UI
 app.use(openAPIRouter);
