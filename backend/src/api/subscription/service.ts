@@ -7,10 +7,12 @@ import { env } from "@/common/utils/envConfig";
 import pino from "pino";
 import { v4 as uuidv4 } from "uuid";
 import { FALLBACK_TEMPLATES, PROMPTS } from "@/common/utils/prompts";
+import { TimeZoneGroupManager } from "@/common/utils/timeZoneManager";
 
 class SubscriptionService {
   private logger: pino.Logger;
   private todaysMessages: Record<Subscriber["preferredLanguage"], string>;
+  private timeZoneManager: TimeZoneGroupManager;
 
   constructor() {
     this.logger = pino({
@@ -34,6 +36,27 @@ class SubscriptionService {
     };
 
     this.updateTodaysMessageTemplates();
+
+    // Initialize TimeZoneManager with send callback
+    this.timeZoneManager = new TimeZoneGroupManager(async (subscribers) => {
+      for (const subscriber of subscribers) {
+        await this.sendDailyNotification(subscriber);
+      }
+    });
+
+    // Load initial subscribers
+    this.initializeTimeZoneManager();
+  }
+
+  // Initialize TimeZoneManager with all active subscribers
+  private async initializeTimeZoneManager(): Promise<void> {
+    try {
+      const subscribers = await this.getAllActiveSubscribers();
+      this.timeZoneManager.initializeWithSubscribers(subscribers);
+      this.logger.info("TimeZoneManager initialized successfully");
+    } catch (error) {
+      this.logger.error("Failed to initialize TimeZoneManager:", error);
+    }
   }
 
   // Create new subscription
@@ -44,7 +67,11 @@ class SubscriptionService {
     if (existingSubscriber) {
       throw new Error("Email already registered");
     }
-    return await subscriberRepository.create(data);
+    const subscriber = await subscriberRepository.create(data);
+    if (subscriber.isActive) {
+      this.timeZoneManager.addOrUpdateSubscriber(subscriber);
+    }
+    return subscriber;
   }
 
   // Send activation email
@@ -114,11 +141,18 @@ class SubscriptionService {
     this.logger.info(
       `[Service] Updating subscription ${id} with new token: ${newToken}`,
     );
-    return await subscriberRepository.update(id, {
+    const updatedSubscriber = await subscriberRepository.update(id, {
       isActive: true,
       token: newToken,
       tokenExpires,
     });
+
+    if (updatedSubscriber) {
+      // Add to time zone manager
+      this.timeZoneManager.addOrUpdateSubscriber(updatedSubscriber);
+    }
+
+    return updatedSubscriber;
   }
 
   // Cancel subscription
@@ -134,6 +168,9 @@ class SubscriptionService {
     });
 
     if (updated) {
+      // Remove from time zone manager
+      this.timeZoneManager.removeSubscriber(id);
+
       const email = emailTemplateManager.getEmailForSubscriber(
         subscriber,
         "cancellation",
@@ -185,7 +222,7 @@ class SubscriptionService {
 
   // Send daily notification
   async sendDailyNotification(subscriber: Subscriber): Promise<void> {
-    // if (!subscriber.isActive || subscriber.hasSent) return;
+    if (!subscriber.isActive) return;
 
     const template = this.todaysMessages[subscriber.preferredLanguage];
     const survivalDays = this.getUserSurvivalDays(subscriber.birthdate);
@@ -200,13 +237,28 @@ class SubscriptionService {
       },
     );
 
-    await sendEmail({
-      to: [subscriber.email],
-      subject: email.subject,
-      html: email.html,
-    });
+    try {
+      await sendEmail({
+        to: [subscriber.email],
+        subject: email.subject,
+        html: email.html,
+      });
 
-    await subscriberRepository.updateSentStatus(subscriber._id);
+      await subscriberRepository.updateSentStatus(subscriber._id);
+
+      // Update in memory
+      this.timeZoneManager.addOrUpdateSubscriber({
+        ...subscriber,
+        hasSent: true,
+        sentCount: subscriber.sentCount + 1,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to send daily notification to ${subscriber.email}:`,
+        error,
+      );
+      throw error;
+    }
   }
 
   // Update today's message templates
@@ -245,12 +297,22 @@ class SubscriptionService {
     // Removed resetDailySentFlags() call from here
   }
 
-  // Reset all daily sent flags (called by daily cron job)
+  // Reset daily sent flags for a specific time zone
   async resetAllFlags(): Promise<void> {
-    this.logger.info(
-      "[Service] Resetting daily sent flags for all subscribers.",
-    );
-    await subscriberRepository.resetDailySentFlags();
+    try {
+      // Reset in database
+      await subscriberRepository.resetDailySentFlags();
+
+      // Reset in memory for all time zones
+      for (let offset = -12; offset <= 14; offset++) {
+        this.timeZoneManager.resetGroupSentStatus(offset);
+      }
+
+      this.logger.info("[Service] Reset all daily sent flags successfully");
+    } catch (error) {
+      this.logger.error("[Service] Error resetting daily sent flags:", error);
+      throw error;
+    }
   }
 
   // Get prompt by language
