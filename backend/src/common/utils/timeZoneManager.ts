@@ -87,6 +87,14 @@ export class TimeZoneGroupManager {
       // Calculate local hour for this time zone
       const localHour = (utcHour + offset + 24) % 24;
 
+      // Reset flags at midnight for this timezone
+      if (localHour === 0) {
+        this.logger.info(
+          `Midnight in timezone offset ${offset}, resetting sent status`,
+        );
+        this.resetGroupSentStatus(offset);
+      }
+      
       // If it's 7 AM in this time zone
       if (localHour === 7) {
         this.logger.info(
