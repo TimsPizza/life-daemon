@@ -1,9 +1,13 @@
-import React from "react";
-import { Outlet, Link } from "react-router-dom";
+import { useEffect } from "react";
 import { useTranslation } from 'react-i18next';
+import { Link, Outlet, useNavigate } from "react-router-dom";
 
 const Layout = () => {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
+  useEffect(() => {
+    navigate('/subscribe');
+  } ,[])
 
   const changeLanguage = (lng: string) => {
     i18n.changeLanguage(lng);
@@ -13,7 +17,7 @@ const Layout = () => {
     <div id="layout" className="flex flex-col min-h-screen w-full bg-gray-100">
       <header className="bg-white shadow-md p-4">
         <nav className="container mx-auto flex justify-between items-center">
-          <Link to="/" className="text-xl font-bold text-indigo-600">
+          <Link to="/subscribe" className="text-xl font-bold text-indigo-600">
             {t('appTitle')}
           </Link>
           <div className="flex items-center">

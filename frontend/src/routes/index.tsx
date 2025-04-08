@@ -12,7 +12,6 @@ const routes: RouteObject[] = [
       {
         path: "/subscribe", // Define the path for the subscription form
         element: <SubscriptionForm />, // Render the SubscriptionForm component
-        index: true, // Set this route as the default child route
       },
       {
         path: "/activate/:id/:token",
