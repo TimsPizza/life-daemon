@@ -8,13 +8,22 @@ import pino from "pino";
 import { v4 as uuidv4 } from "uuid";
 import { FALLBACK_TEMPLATES, PROMPTS } from "@/common/utils/prompts";
 import { TimeZoneGroupManager } from "@/common/utils/timeZoneManager";
+import { dbEvents } from "@/common/utils/db";
 
 class SubscriptionService {
+  private static instance: SubscriptionService;
   private logger: pino.Logger;
   private todaysMessages: Record<Subscriber["preferredLanguage"], string>;
   private timeZoneManager: TimeZoneGroupManager;
 
-  constructor() {
+  public static getInstance(): SubscriptionService {
+    if (!this.instance) {
+      this.instance = new SubscriptionService();
+    }
+    return this.instance;
+  }
+
+  private constructor() {
     this.logger = pino({
       name: "SubscriptionService",
       level: process.env.LOG_LEVEL || "info",
@@ -35,8 +44,6 @@ class SubscriptionService {
       jp: "",
     };
 
-    this.updateTodaysMessageTemplates();
-
     // Initialize TimeZoneManager with send callback
     this.timeZoneManager = new TimeZoneGroupManager(async (subscribers) => {
       for (const subscriber of subscribers) {
@@ -44,18 +51,55 @@ class SubscriptionService {
       }
     });
 
-    // Load initial subscribers
-    this.initializeTimeZoneManager();
+    // Initial connection - full initialization
+    dbEvents.on("initialConnection", async () => {
+      try {
+        await this.updateTodaysMessageTemplates();
+        await this.initializeTimeZoneManager();
+        this.logger.info("SubscriptionService initialized successfully");
+      } catch (error) {
+        this.logger.error(
+          { err: error },
+          "Failed to initialize SubscriptionService"
+        );
+      }
+    });
+
+    // Handle reconnection - only reload subscribers
+    dbEvents.on("reconnected", async () => {
+      try {
+        await this.initializeTimeZoneManager();
+        this.logger.info("Reloaded subscribers after reconnection");
+      } catch (error) {
+        this.logger.error(
+          { err: error },
+          "Failed to reload subscribers after reconnection"
+        );
+      }
+    });
+
+    // Handle database disconnection
+    dbEvents.on("disconnected", () => {
+      this.logger.warn("Database disconnected, service may be temporarily unavailable");
+    });
   }
 
   // Initialize TimeZoneManager with all active subscribers
   private async initializeTimeZoneManager(): Promise<void> {
     try {
       const subscribers = await this.getAllActiveSubscribers();
+      if (!Array.isArray(subscribers)) {
+        throw new Error("Invalid response from database: subscribers not an array");
+      }
+      
       this.timeZoneManager.initializeWithSubscribers(subscribers);
-      this.logger.info("TimeZoneManager initialized successfully");
+      this.logger.info(`TimeZoneManager initialized with ${subscribers.length} subscribers`);
     } catch (error) {
-      this.logger.error("Failed to initialize TimeZoneManager:", error);
+      this.logger.error(
+        { err: error },
+        "Failed to initialize TimeZoneManager"
+      );
+      throw error;
     }
   }
 
@@ -344,4 +388,4 @@ class SubscriptionService {
   }
 }
 
-export const subscriptionService = new SubscriptionService();
+export const subscriptionService = SubscriptionService.getInstance();
