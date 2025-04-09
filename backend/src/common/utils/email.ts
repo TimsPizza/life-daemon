@@ -44,13 +44,9 @@ export async function sendEmail({
       html: html,
     });
 
-    logger.info("[MAILGUN_SEND_SUCCESS]", {
-      messageId: result.id,
-      to: to,
-      subject: subject,
-    });
+    logger.info(`[MAILGUN_SEND_SUCCESS] To ${to}`);
   } catch (error) {
-    logger.error("[MAILGUN_SEND_ERROR]", {
+    logger.error("[MAILGUN_SEND_ERROR] To ${to}", {
       error: error,
     });
   }

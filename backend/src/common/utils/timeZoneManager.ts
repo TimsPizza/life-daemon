@@ -129,6 +129,11 @@ export class TimeZoneGroupManager {
       this.logger.info(
         `Successfully processed ${subscribersToSend.length} subscribers for timezone offset ${group.offset}`,
       );
+      if(subscribersToSend.length) {
+        subscribersToSend.forEach((sub) => {
+          this.logger.info(`Processed subscriber ${sub.preferredName}, email: ${sub.email}`);
+        })
+      }
     } catch (error) {
       this.logger.error(
         `Error processing subscribers for timezone offset ${group.offset}:`,
