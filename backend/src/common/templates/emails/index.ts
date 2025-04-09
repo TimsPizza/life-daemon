@@ -19,6 +19,42 @@ class EmailTemplateManager {
     return templates[language] || templates["en"]; // Fallback to English if language not found
   }
 
+  // Convert markdown to HTML while preserving emojis
+  private convertMarkdownToHtml(markdown: string): string {
+    // Escape HTML special characters except for emojis
+    const escapeHtml = (text: string) => {
+      const htmlChars: Record<string, string> = {
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;",
+      };
+      // Use negative lookahead to avoid escaping emoji characters
+      return text.replace(/[&<>"'](?![^\\u0000-\\u007F])/g, char => htmlChars[char] || char);
+    };
+
+    let html = escapeHtml(markdown);
+
+    // Convert markdown to HTML
+    // Bold: Convert **text** to <strong>text</strong>
+    html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+
+    // Italic: Convert *text* to <em>text</em>, but only if it's not part of an emoji
+    html = html.replace(/\*([^*\n]+)\*/g, (match, p1) => {
+      // Check if the match is likely part of an emoji sequence
+      if (p1.match(/[^\u0000-\u007F]/)) {
+        return match; // Keep original if it contains emoji
+      }
+      return `<em>${p1}</em>`;
+    });
+
+    // Convert newlines to <br>
+    html = html.replace(/\n/g, "<br>");
+
+    return html;
+  }
+
   getActivationEmail(
     activationLink: string,
     language: SupportedLanguage,
@@ -64,8 +100,10 @@ class EmailTemplateManager {
       dailyNotificationEmailTemplates,
       language,
     );
-    // Replace newline characters with HTML line breaks
-    const formattedMessage = message.replace(/\n/g, "<br>");
+    
+    // Convert markdown to HTML while preserving emojis
+    const formattedMessage = this.convertMarkdownToHtml(message);
+
     return {
       subject: template.subject,
       html: template

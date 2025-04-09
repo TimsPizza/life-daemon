@@ -1,3 +1,5 @@
+// TODO: consider attaching actual date? And let AI to NOT to follow the template, NEVER
+
 export interface PromptEntry {
   lang: "en" | "fr" | "cn" | "jp";
   prompt: string;
