@@ -4,8 +4,9 @@ import axios, { AxiosError, AxiosInstance, AxiosResponse } from 'axios';
 const http: AxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api', // 从环境变量获取基础 URL
   timeout: 10000,
+  withCredentials: true, // 允许跨域请求携带凭证
   headers: {
-    'Content-Type': 'application/json',
+    'Content-Type': 'application/json'
   },
 });
 
