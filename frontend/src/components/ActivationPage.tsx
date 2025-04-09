@@ -6,7 +6,6 @@ import { subscriptionApi } from "@/api/subscription";
 const ActivationPage: React.FC = () => {
   const { t } = useTranslation();
   const { id, token } = useParams<{ id: string; token: string }>();
-  const navigate = useNavigate();
   const effectRan = useRef(false); // Ref to track effect execution
   const [message, setMessage] = useState<{
     type: "success" | "error";
@@ -35,8 +34,6 @@ const ActivationPage: React.FC = () => {
             type: "success",
             text: response.message || t("activationSuccessMessage"),
           });
-          // Optionally redirect after a delay
-          setTimeout(() => navigate("/"), 3000);
         } else {
           throw new Error(response.message || t("activationFailedMessage"));
         }
@@ -51,7 +48,7 @@ const ActivationPage: React.FC = () => {
     };
 
     activateSubscription();
-  }, [id, token, navigate, t]); // Add t to dependency array
+  }, [id, token, t]); // Add t to dependency array
 
   return (
     <div className="mx-auto mt-10 max-w-md rounded-lg bg-white p-8 text-center shadow-md">
