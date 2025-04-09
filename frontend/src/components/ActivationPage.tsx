@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from "react"; // Import useRef
-import { useParams, useNavigate } from "react-router-dom";
-import { useTranslation } from "react-i18next";
 import { subscriptionApi } from "@/api/subscription";
+import React, { useEffect, useRef, useState } from "react"; // Import useRef
+import { useTranslation } from "react-i18next";
+import { useParams } from "react-router-dom";
 
 const ActivationPage: React.FC = () => {
   const { t } = useTranslation();
