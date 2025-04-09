@@ -32,8 +32,14 @@ app.use("/health-check", healthCheckRouter);
 // app.use("/users", userRouter); // Removed unused route
 app.use("/subscriptions", subscriptionRouter); // Use subscription router
 
-// Swagger UI
-app.use(openAPIRouter);
+// // Swagger UI
+// disable the OpenAPI documentation in production
+if (env.NODE_ENV !== "production") {
+  app.use("/api-docs", openAPIRouter);
+} else {
+  logger.info("OpenAPI documentation is disabled in production.");
+}
+// app.use(openAPIRouter);
 
 // Error handlers
 app.use(errorHandler());
