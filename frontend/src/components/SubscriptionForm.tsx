@@ -5,11 +5,25 @@ import type { SubscriptionRequest } from "@/api/types";
 
 const SubscriptionForm: React.FC = () => {
   const { t, i18n } = useTranslation(); // Add useTranslation hook
+  // Map browser language code to supported language code
+  const mapLanguageCode = (code: string): 'en' | 'fr' | 'cn' | 'jp' => {
+    const languageMap: { [key: string]: 'en' | 'fr' | 'cn' | 'jp' } = {
+      zh: 'cn',
+      'zh-CN': 'cn',
+      'zh-TW': 'cn',
+      'zh-HK': 'cn',
+      ja: 'jp',
+      fr: 'fr',
+      en: 'en'
+    };
+    return languageMap[code] || 'en';
+  };
+
   const [formData, setFormData] = useState<SubscriptionRequest>({
     preferredName: "",
     email: "",
     birthdate: "",
-    preferredLanguage: i18n.language.split('-')[0] as 'en' | 'fr' | 'cn' | 'jp' || 'en', // Initialize with current language
+    preferredLanguage: mapLanguageCode(i18n.language), // Initialize with mapped language code
     timeOffset: 0,
   });
   const [message, setMessage] = useState<{
@@ -70,7 +84,7 @@ const SubscriptionForm: React.FC = () => {
           preferredName: "",
           email: "",
           birthdate: "",
-          preferredLanguage: i18n.language.split('-')[0] as 'en' | 'fr' | 'cn' | 'jp' || 'en',
+          preferredLanguage: mapLanguageCode(i18n.language),
           timeOffset: new Date().getTimezoneOffset() / -60,
         });
       } else {

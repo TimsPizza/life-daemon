@@ -26,7 +26,7 @@ const resources = {
 i18n
   // Detect user language
   .use(LanguageDetector)
-  // Pass the i18n instance to react-i18next.
+  // Pass the i18n instance to react-i18next
   .use(initReactI18next)
   // Init i18next
   .init({
@@ -36,11 +36,26 @@ i18n
       escapeValue: false, // React already safes from xss
     },
     resources,
-    // Language detection options
+    supportedLngs: ['en', 'fr', 'cn', 'jp'],
     detection: {
-      order: ['querystring', 'cookie', 'localStorage', 'sessionStorage', 'navigator', 'htmlTag'],
-      caches: ['localStorage', 'cookie'], // Cache the language preference
+      order: ['querystring', 'cookie', 'localStorage', 'navigator', 'htmlTag'],
+      caches: ['localStorage', 'cookie'],
+      lookupQuerystring: 'lang',
+      lookupCookie: 'i18next',
+      lookupLocalStorage: 'i18nextLng',
     },
   });
+
+// Add language mapping
+i18n.services.languageUtils.getLanguagePartFromCode = function(code: string) {
+  const languageMap: { [key: string]: string } = {
+    zh: 'cn',
+    'zh-CN': 'cn',
+    'zh-TW': 'cn',
+    'zh-HK': 'cn',
+    ja: 'jp'
+  };
+  return languageMap[code] || code;
+};
 
 export default i18n;
