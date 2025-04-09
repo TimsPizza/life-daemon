@@ -1,13 +1,17 @@
 import { useEffect } from "react";
 import { useTranslation } from 'react-i18next';
-import { Link, Outlet, useNavigate } from "react-router-dom";
+import { Link, Outlet, useNavigate, useLocation } from "react-router-dom";
 
 const Layout = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
+  
   useEffect(() => {
-    navigate('/subscribe');
-  } ,[])
+    if (location.pathname === '/') {
+      navigate('/subscribe');
+    }
+  }, [location.pathname, navigate])
 
   const changeLanguage = (lng: string) => {
     i18n.changeLanguage(lng);
