@@ -15,6 +15,7 @@ class SubscriptionService {
   private logger: pino.Logger;
   private todaysMessages: Record<Subscriber["preferredLanguage"], string>;
   private timeZoneManager: TimeZoneGroupManager;
+  private templateRefreshInterval: NodeJS.Timeout | null = null;
 
   public static getInstance(): SubscriptionService {
     if (!this.instance) {
@@ -51,16 +52,25 @@ class SubscriptionService {
       }
     });
 
+    // Set up template refresh interval
+    const currentTime = Date.now(); // Corrected to use Date.now()
+    const millisecondsUntilMidnight =
+      24 * 60 * 60 * 1000 - (currentTime % (24 * 60 * 60 * 1000));
+    setTimeout(() => {
+      this.startDailyTemplateUpdate();
+      this.logger.info("Daily template update started");
+    }, millisecondsUntilMidnight);
+
     // Initial connection - full initialization
     dbEvents.on("initialConnection", async () => {
       try {
-        await this.updateTodaysMessageTemplates();
+        await this.tryUpdateDailyTemplate();
         await this.initializeTimeZoneManager();
         this.logger.info("SubscriptionService initialized successfully");
       } catch (error) {
         this.logger.error(
           { err: error },
-          "Failed to initialize SubscriptionService"
+          "Failed to initialize SubscriptionService",
         );
       }
     });
@@ -73,15 +83,39 @@ class SubscriptionService {
       } catch (error) {
         this.logger.error(
           { err: error },
-          "Failed to reload subscribers after reconnection"
+          "Failed to reload subscribers after reconnection",
         );
       }
     });
 
     // Handle database disconnection
     dbEvents.on("disconnected", () => {
-      this.logger.warn("Database disconnected, service may be temporarily unavailable");
+      this.logger.warn(
+        "Database disconnected, service may be temporarily unavailable",
+      );
     });
+  }
+
+  private async tryUpdateDailyTemplate(): Promise<void> {
+    try {
+      await this.updateTodaysMessageTemplates();
+      this.logger.info("Today's message templates updated successfully");
+    } catch (error) {
+      this.logger.error("Error updating today's message templates:", error);
+    }
+  }
+
+  private async startDailyTemplateUpdate(): Promise<void> {
+    if (this.templateRefreshInterval) {
+      clearInterval(this.templateRefreshInterval);
+    }
+    this.logger.info(
+      "Starting daily template update interval for today's message templates",
+    );
+    this.templateRefreshInterval = setInterval(
+      this.tryUpdateDailyTemplate,
+      24 * 60 * 60 * 1000,
+    ); // Update every 24 hours
   }
 
   // Initialize TimeZoneManager with all active subscribers
@@ -89,16 +123,17 @@ class SubscriptionService {
     try {
       const subscribers = await this.getAllActiveSubscribers();
       if (!Array.isArray(subscribers)) {
-        throw new Error("Invalid response from database: subscribers not an array");
+        throw new Error(
+          "Invalid response from database: subscribers not an array",
+        );
       }
-      
+
       this.timeZoneManager.initializeWithSubscribers(subscribers);
-      this.logger.info(`TimeZoneManager initialized with ${subscribers.length} subscribers`);
-    } catch (error) {
-      this.logger.error(
-        { err: error },
-        "Failed to initialize TimeZoneManager"
+      this.logger.info(
+        `TimeZoneManager initialized with ${subscribers.length} subscribers`,
       );
+    } catch (error) {
+      this.logger.error({ err: error }, "Failed to initialize TimeZoneManager");
       throw error;
     }
   }
