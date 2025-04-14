@@ -12,6 +12,7 @@ const ActivationPage: React.FC = () => {
     text: string;
   } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     // Prevent double execution in StrictMode (development only)
@@ -21,7 +22,7 @@ const ActivationPage: React.FC = () => {
     effectRan.current = true; // Mark effect as run
 
     const activateSubscription = async () => {
-      if (!id || !token) {
+      if (!id || !token || loaded) {
         setMessage({ type: "error", text: t("activationInvalidLinkMessage") });
         setIsLoading(false);
         return;
@@ -29,6 +30,7 @@ const ActivationPage: React.FC = () => {
 
       try {
         const response = await subscriptionApi.activateSubscription(id, token);
+        setLoaded(true); // Set loaded to true after API call
         if (response.success) {
           setMessage({
             type: "success",
