@@ -52,18 +52,21 @@ class SubscriptionService {
       }
     });
 
-    // Set up template refresh interval
-    const currentTime = Date.now(); // Corrected to use Date.now()
-    const millisecondsUntilMidnight =
-      24 * 60 * 60 * 1000 - (currentTime % (24 * 60 * 60 * 1000));
-    setTimeout(() => {
-      this.startDailyTemplateUpdate();
-      this.logger.info("Daily template update started");
-    }, millisecondsUntilMidnight);
-
     // Initial connection - full initialization
     dbEvents.on("initialConnection", async () => {
       try {
+        // Set up template refresh interval
+        const currentTime = Date.now(); // Corrected to use Date.now()
+        const millisecondsUntilMidnight =
+          23.5 * 60 * 60 * 1000 - (currentTime % (24 * 60 * 60 * 1000));
+        this.logger.info(
+          `First daily template update set for ${new Date(Date.now() + millisecondsUntilMidnight)}`,
+        );
+        setTimeout(() => {
+          this.startDailyTemplateUpdate();
+          this.logger.info("Daily template update started");
+        }, millisecondsUntilMidnight);
+
         await this.tryUpdateDailyTemplate();
         await this.initializeTimeZoneManager();
         this.logger.info("SubscriptionService initialized successfully");
